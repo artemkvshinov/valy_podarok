@@ -2,7 +2,6 @@
    режимы:
   "Led_OFF",         //лента выключена
   "RGB_Ring",        //кольцо выбора цвета
-  "RGB_auto_Ring",   //переливающееся кольцо
   "White",           //белый
   "Red",             //красный
   "Green",           //зелёный
@@ -11,7 +10,7 @@
   "Azure",           //голубой
   "violet"           //фиолетовый
 */
-#define kol_size 9                    //количество режимов -1
+#define kol_size 8                    //количество режимов -1
 #define CLK 4
 #define DT 3
 #include "GyverEncoder.h"
@@ -20,6 +19,7 @@ Encoder enc1(CLK, DT);
 #define Led_Green 10
 #define Led_Blue 9
 #define button 5
+uint8_t r_pwm = 0, g_pwm = 0, b_pwm = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -39,18 +39,13 @@ void setup() {
 
 void loop() {
   static uint8_t value;
-  static uint8_t special;
   static uint8_t mode;
-  static uint8_t brightness = 125;
   if (button_click(button))(mode == kol_size) ? mode = 0 : mode++;
   enc1.tick();
   if (enc1.isRight())  value++;        // если был поворот направо, увеличиваем на 1
   if (enc1.isLeft())   value--;        // если был поворот налево, уменьшаем на 1
-  if (enc1.isFastR()) value += 10;     // если был быстрый поворот направо, увеличиваем на 10
-  if (enc1.isFastL()) value -= 10;     // если был быстрый поворот налево, уменьшаем на 10
-  if (enc1.isRightH()) special++;      // если было удержание + поворот
-  if (enc1.isLeftH())  special--;
-  Serial.println(value);
+  if (enc1.isFastR()) value += 5;     // если был быстрый поворот направо, увеличиваем на 10
+  if (enc1.isFastL()) value -= 5;     // если был быстрый поворот налево, уменьшаем на 10
   switch (mode) {
     case 0:
       //      Serial.println("Led_OFF");
@@ -60,47 +55,49 @@ void loop() {
       break;
     case 1:
       //      Serial.println("RGB_Ring");
+      makeColor(value);
+      analogWrite(Led_Red, r_pwm);                  // Генерируем ШИМ сигналы
+      analogWrite(Led_Green, g_pwm);
+      analogWrite(Led_Blue, b_pwm);
       break;
     case 2:
-      //      Serial.println("RGB_auto_Ring");
-      break;
-    case 3:
       //      Serial.println("White");
       analogWrite(Led_Red, value);
       analogWrite(Led_Green, value);
       analogWrite(Led_Blue, value);
       break;
-    case 4:
+    case 3:
       //      Serial.println("Red");
       analogWrite(Led_Red, value);
       digitalWrite(Led_Green, HIGH);
       digitalWrite(Led_Blue, HIGH);
       break;
-    case 5:
+      break;
+    case 4:
       //      Serial.println("Green");
       digitalWrite(Led_Red, HIGH);
       analogWrite(Led_Green, value);
       digitalWrite(Led_Blue, HIGH);
       break;
-    case 6:
+    case 5:
       //      Serial.println("Blue");
       digitalWrite(Led_Red, HIGH);
       digitalWrite(Led_Green, HIGH);
       analogWrite(Led_Blue, value);
       break;
-    case 7:
+    case 6:
       //      Serial.println("Yellow");
       analogWrite(Led_Red, value);
       digitalWrite(Led_Blue, HIGH);
       analogWrite(Led_Green, value);
       break;
-    case 8:
+    case 7:
       //      Serial.println("Azure");
       digitalWrite(Led_Red, HIGH);
       analogWrite(Led_Blue, value);
       analogWrite(Led_Green, value);
       break;
-    case 9:
+    case 8:
       //      Serial.println("violet");
       analogWrite(Led_Red, value);
       analogWrite(Led_Blue, value);
@@ -131,4 +128,22 @@ bool button_click(uint8_t pin) {
 
   }
   return !out;
+}
+
+
+void makeColor(uint8_t color) {                   // 8-ми битное цветовое колесо
+  uint8_t shift = 0;                              // Цветовой сдвиг
+  if (color > 170) {                              // Синий - фиолетовый - красный
+    shift = (color - 170) * 3;                    // Получаем цветовой сдвиг 0 - 255
+    r_pwm = shift, g_pwm = 0, b_pwm = ~shift;     // Получаем компоненты RGB
+  } else if (color > 85) {                        // Зеленый - голубой - синий
+    shift = (color - 85) * 3;                     // Получаем цветовой сдвиг 0 - 255
+    r_pwm = 0, g_pwm = ~shift, b_pwm = shift;     // Получаем компоненты RGB
+  } else {                                        // Красный - оранжевый - зеленый
+    shift = (color - 0) * 3;                      // Получаем цветовой сдвиг 0 - 255
+    r_pwm = ~shift, g_pwm = shift, b_pwm = 0;     // Получаем компоненты RGB
+  }
+  r_pwm = ((uint16_t)r_pwm  * (255 + 1)) >> 8;   // Применяем яркость
+  g_pwm = ((uint16_t)g_pwm  * (255 + 1)) >> 8;   // Применяем яркость
+  b_pwm = ((uint16_t)b_pwm  * (255 + 1)) >> 8;   // Применяем яркость
 }
