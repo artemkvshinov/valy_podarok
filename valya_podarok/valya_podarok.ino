@@ -17,10 +17,10 @@
 #define SW 2
 #include "GyverEncoder.h"
 Encoder enc1(CLK, DT, SW);
-#define button 5
 #define Led_Red 11
 #define Led_Green 10
 #define Led_Blue 9
+#define button 5
 
 void setup() {
   Serial.begin(9600);
@@ -36,13 +36,12 @@ void setup() {
 }
 
 void loop() {
-  uint8_t mode;
-  uint8_t brightness = 255;
-  if(digitalRead(button)==0) mode++;
-  if(mode>kol_size) mode = 0;
+  static uint8_t mode;
+  static uint8_t brightness = 125;
+  if (button_click(button))(mode == kol_size) ? mode = 0 : mode++;
   Serial.println(mode);
   /*
-  switch (mode) {
+    switch (mode) {
     case 0:
       Serial.println("Led_OFF");
       break;
@@ -73,6 +72,29 @@ void loop() {
     case 9:
       Serial.println("violet");
       break;
-  }
+    }
   */
+}
+
+
+bool button_click(uint8_t pin) {
+  static bool flag;
+  static uint32_t btnTimer;
+  // читаем инвертированное значение для удобства
+  bool btnState = !digitalRead(pin);
+  bool out;
+  if (btnState && !flag && millis() - btnTimer > 100) {
+    flag = true;
+    btnTimer = millis();
+    out = 1;
+    //Serial.println("press");
+  }
+  if (!btnState && flag && millis() - btnTimer > 100) {
+    flag = false;
+    btnTimer = millis();
+    out = 0;
+    //Serial.println("release");
+    
+  }
+  return !out;
 }
